@@ -1,0 +1,4 @@
+# file: D:\kiro\backend\app\github_client.py
+# hypothesis_version: 6.150.2
+
+[30.0, 200, 401, 403, 404, 3600, '&', '.git', '/', 'Accept', 'Authorization', 'User-Agent', 'clone_url', 'content', 'core', 'created_at', 'default_branch', 'description', 'file', 'fork', 'forks_count', 'full_name', 'git@github.com:', 'html_url', 'http', 'https://github.com/', 'language', 'limit', 'login', 'message', 'name', 'owner', 'path', 'private', 'rate limit', 'rate_limit', 'ref', 'remaining', 'reset', 'resources', 'sha', 'size', 'stargazers_count', 'type', 'updated_at', 'used', 'utf-8', 'x-ratelimit-limit', 'x-ratelimit-reset', 'x-ratelimit-used']

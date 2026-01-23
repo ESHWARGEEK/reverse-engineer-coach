@@ -1,0 +1,98 @@
+{
+  "environment": "production",
+  "version": "latest",
+  "domain": "",
+  "backup_enabled": true,
+  "validation_enabled": true,
+  "monitoring_duration_minutes": 60,
+  "dashboard_enabled": true,
+  "dashboard_port": 5000,
+  "feedback_collection_enabled": true,
+  
+  "notification_settings": {
+    "email_enabled": false,
+    "email_smtp_host": "",
+    "email_smtp_port": 587,
+    "email_username": "",
+    "email_password": "",
+    "notification_email": "",
+    "slack_enabled": false,
+    "slack_webhook_url": "",
+    "webhook_url": ""
+  },
+  
+  "rollback_settings": {
+    "auto_rollback_on_failure": false,
+    "rollback_threshold_error_rate": 10,
+    "rollback_threshold_response_time": 5000,
+    "rollback_timeout_minutes": 30
+  },
+  
+  "health_check_settings": {
+    "initial_wait_seconds": 60,
+    "check_interval_seconds": 30,
+    "max_retries": 10,
+    "timeout_seconds": 30
+  },
+  
+  "monitoring_settings": {
+    "collect_system_metrics": true,
+    "collect_user_metrics": true,
+    "collect_performance_metrics": true,
+    "alert_thresholds": {
+      "response_time_ms": 2000,
+      "error_rate_percent": 5,
+      "cpu_percent": 80,
+      "memory_percent": 85,
+      "disk_percent": 90
+    }
+  },
+  
+  "services": [
+    {
+      "name": "api",
+      "url": "/health",
+      "timeout": 10,
+      "critical": true
+    },
+    {
+      "name": "frontend",
+      "url": "/",
+      "timeout": 10,
+      "critical": true
+    },
+    {
+      "name": "auth",
+      "url": "/api/auth/health",
+      "timeout": 10,
+      "critical": true
+    },
+    {
+      "name": "discovery",
+      "url": "/api/discover/health",
+      "timeout": 10,
+      "critical": false
+    }
+  ],
+  
+  "docker_services": [
+    "reverse-coach-backend-prod",
+    "reverse-coach-frontend-prod",
+    "reverse-coach-postgres-prod",
+    "reverse-coach-redis-prod",
+    "reverse-coach-nginx-prod"
+  ],
+  
+  "performance_targets": {
+    "max_response_time_ms": 2000,
+    "min_uptime_percent": 99.5,
+    "max_error_rate_percent": 1,
+    "target_concurrent_users": 100
+  },
+  
+  "user_adoption_targets": {
+    "daily_active_users": 50,
+    "weekly_registrations": 20,
+    "project_creation_rate": 10
+  }
+}

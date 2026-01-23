@@ -1,0 +1,379 @@
+name: Enhanced CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install Python dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Install Node.js dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Run database migrations (test)
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379
+        ENVIRONMENT: test
+        SECRET_KEY: test_secret_key_minimum_32_characters_long
+        JWT_SECRET_KEY: test_jwt_secret_key_minimum_32_characters_long
+        JWT_REFRESH_SECRET_KEY: test_jwt_refresh_secret_key_minimum_32_characters_long
+        ENCRYPTION_KEY: dGVzdF9lbmNyeXB0aW9uX2tleV8zMl9ieXRlc19sb25n
+        MASTER_ENCRYPTION_KEY: dGVzdF9tYXN0ZXJfZW5jcnlwdGlvbl9rZXlfMzJfYnl0ZXM=
+      run: |
+        alembic upgrade head
+    
+    - name: Run backend unit tests
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379
+        ENVIRONMENT: test
+        SECRET_KEY: test_secret_key_minimum_32_characters_long
+        JWT_SECRET_KEY: test_jwt_secret_key_minimum_32_characters_long
+        JWT_REFRESH_SECRET_KEY: test_jwt_refresh_secret_key_minimum_32_characters_long
+        ENCRYPTION_KEY: dGVzdF9lbmNyeXB0aW9uX2tleV8zMl9ieXRlc19sb25n
+        MASTER_ENCRYPTION_KEY: dGVzdF9tYXN0ZXJfZW5jcnlwdGlvbl9rZXlfMzJfYnl0ZXM=
+      run: |
+        python -m pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+    
+    - name: Run authentication flow tests
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379
+        ENVIRONMENT: test
+        SECRET_KEY: test_secret_key_minimum_32_characters_long
+        JWT_SECRET_KEY: test_jwt_secret_key_minimum_32_characters_long
+        JWT_REFRESH_SECRET_KEY: test_jwt_refresh_secret_key_minimum_32_characters_long
+        ENCRYPTION_KEY: dGVzdF9lbmNyeXB0aW9uX2tleV8zMl9ieXRlc19sb25n
+        MASTER_ENCRYPTION_KEY: dGVzdF9tYXN0ZXJfZW5jcnlwdGlvbl9rZXlfMzJfYnl0ZXM=
+      run: |
+        python -m pytest tests/test_authentication_services.py tests/test_jwt_and_auth_integration.py -v
+    
+    - name: Run security tests
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379
+        ENVIRONMENT: test
+        SECRET_KEY: test_secret_key_minimum_32_characters_long
+        JWT_SECRET_KEY: test_jwt_secret_key_minimum_32_characters_long
+        JWT_REFRESH_SECRET_KEY: test_jwt_refresh_secret_key_minimum_32_characters_long
+        ENCRYPTION_KEY: dGVzdF9lbmNyeXB0aW9uX2tleV8zMl9ieXRlc19sb25n
+        MASTER_ENCRYPTION_KEY: dGVzdF9tYXN0ZXJfZW5jcnlwdGlvbl9rZXlfMzJfYnl0ZXM=
+      run: |
+        python -m pytest tests/ -k "security" -v
+    
+    - name: Run frontend tests
+      working-directory: ./frontend
+      env:
+        REACT_APP_API_URL: http://localhost:8000
+      run: |
+        npm run test -- --coverage --watchAll=false
+    
+    - name: Run frontend authentication tests
+      working-directory: ./frontend
+      env:
+        REACT_APP_API_URL: http://localhost:8000
+      run: |
+        npm run test -- --testPathPattern="auth|Auth" --watchAll=false
+    
+    - name: Run E2E tests
+      working-directory: ./frontend
+      env:
+        REACT_APP_API_URL: http://localhost:8000
+      run: |
+        npm run test -- --testPathPattern="E2E|e2e" --watchAll=false
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./backend/coverage.xml,./frontend/coverage/lcov.info
+        fail_ci_if_error: true
+    
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: |
+          backend/coverage.xml
+          backend/htmlcov/
+          frontend/coverage/
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  build:
+    needs: [test, security-scan]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        service: [backend, frontend]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./${{ matrix.service }}
+        file: ./${{ matrix.service }}/Dockerfile.prod
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Run database migrations (staging)
+      run: |
+        kubectl create job migration-$(date +%s) --from=cronjob/db-migration -n staging
+        kubectl wait --for=condition=complete job/migration-$(date +%s) -n staging --timeout=300s
+    
+    - name: Deploy to staging
+      run: |
+        export KUBECONFIG=kubeconfig
+        kubectl set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:develop -n staging
+        kubectl set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:develop -n staging
+        kubectl rollout status deployment/backend -n staging --timeout=300s
+        kubectl rollout status deployment/frontend -n staging --timeout=300s
+    
+    - name: Run health checks (staging)
+      run: |
+        export KUBECONFIG=kubeconfig
+        kubectl run health-check --image=curlimages/curl --rm -i --restart=Never -n staging -- \
+          curl -f http://backend-service:8000/api/monitoring/health/detailed
+    
+    - name: Run smoke tests (staging)
+      working-directory: ./backend
+      env:
+        API_BASE_URL: ${{ secrets.STAGING_API_URL }}
+        TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+      run: |
+        python -m pytest tests/test_integration_e2e.py -v --tb=short
+
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Create backup before deployment
+      run: |
+        export KUBECONFIG=kubeconfig
+        kubectl create job backup-$(date +%s) --from=cronjob/db-backup -n production
+        kubectl wait --for=condition=complete job/backup-$(date +%s) -n production --timeout=600s
+    
+    - name: Run database migrations (production)
+      run: |
+        export KUBECONFIG=kubeconfig
+        kubectl create job migration-$(date +%s) --from=cronjob/db-migration -n production
+        kubectl wait --for=condition=complete job/migration-$(date +%s) -n production --timeout=600s
+    
+    - name: Deploy to production (rolling update)
+      run: |
+        export KUBECONFIG=kubeconfig
+        
+        # Update backend with rolling deployment
+        kubectl set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest -n production
+        kubectl rollout status deployment/backend -n production --timeout=600s
+        
+        # Wait and verify backend health
+        sleep 30
+        kubectl run health-check-backend --image=curlimages/curl --rm -i --restart=Never -n production -- \
+          curl -f http://backend-service:8000/api/monitoring/health/detailed
+        
+        # Update frontend
+        kubectl set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest -n production
+        kubectl rollout status deployment/frontend -n production --timeout=600s
+    
+    - name: Run comprehensive health checks (production)
+      run: |
+        export KUBECONFIG=kubeconfig
+        
+        # Check all services are healthy
+        kubectl run health-check-full --image=curlimages/curl --rm -i --restart=Never -n production -- \
+          sh -c "
+            curl -f http://backend-service:8000/api/monitoring/health/detailed &&
+            curl -f http://frontend-service:3000/ &&
+            echo 'All services healthy'
+          "
+    
+    - name: Run production smoke tests
+      working-directory: ./backend
+      env:
+        API_BASE_URL: ${{ secrets.PRODUCTION_API_URL }}
+        TEST_USER_EMAIL: ${{ secrets.PRODUCTION_TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.PRODUCTION_TEST_USER_PASSWORD }}
+      run: |
+        python -m pytest tests/test_integration_simple.py -v --tb=short
+    
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "Production deployment successful!"
+        # Add notification logic here (Slack, email, etc.)
+    
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        export KUBECONFIG=kubeconfig
+        echo "Deployment failed, initiating rollback..."
+        kubectl rollout undo deployment/backend -n production
+        kubectl rollout undo deployment/frontend -n production
+        kubectl rollout status deployment/backend -n production --timeout=300s
+        kubectl rollout status deployment/frontend -n production --timeout=300s
+        echo "Rollback completed"
+        # Add failure notification logic here
+
+  post-deploy-monitoring:
+    needs: [deploy-production]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && success()
+    
+    steps:
+    - name: Monitor deployment metrics
+      run: |
+        echo "Monitoring deployment metrics for 5 minutes..."
+        # Add monitoring checks here
+        # Could integrate with Prometheus, DataDog, etc.
+        sleep 300
+    
+    - name: Check error rates
+      run: |
+        echo "Checking error rates and performance metrics..."
+        # Add error rate monitoring
+    
+    - name: Update deployment status
+      run: |
+        echo "Deployment monitoring completed successfully"

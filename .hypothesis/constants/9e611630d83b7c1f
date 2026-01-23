@@ -1,0 +1,4 @@
+# file: D:\kiro\backend\app\config.py
+# hypothesis_version: 6.150.2
+
+[8000, '.env', '0.0.0.0', 'HS256', 'development']
