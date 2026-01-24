@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # GitHub Integration
     github_token: str = ""
     
+    # System-wide API credentials (from environment variables)
+    system_github_token: str = ""
+    system_gemini_api_key: str = ""
+    
     # Environment
     environment: str = "development"
     debug: bool = True

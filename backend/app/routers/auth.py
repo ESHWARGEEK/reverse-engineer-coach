@@ -96,6 +96,36 @@ async def test_simple_registration():
     return {"message": "Simple test endpoint works", "timestamp": datetime.utcnow().isoformat()}
 
 
+@router.post("/debug/test-registration")
+async def test_registration_debug(db: Session = Depends(get_db)):
+    """Debug endpoint to test simplified registration"""
+    try:
+        # Test data
+        test_data = UserRegistrationRequest(
+            email="test@example.com",
+            password="TestPassword123!",
+            preferred_ai_provider="gemini",
+            preferred_language="python"
+        )
+        
+        # Try registration
+        success, response, error = await auth_service.register_user(test_data, db)
+        
+        return {
+            "success": success,
+            "error": error,
+            "response_type": type(response).__name__ if response else None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Debug registration failed: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+
 @router.post("/register", response_model=UserRegistrationResponse)
 # @validate_auth_registration  # Temporarily disabled for debugging
 # @rate_limit(max_requests=10, window_seconds=3600)  # Temporarily disabled for debugging

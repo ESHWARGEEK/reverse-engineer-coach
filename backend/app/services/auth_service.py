@@ -10,10 +10,9 @@ from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, EmailStr, validator
 from fastapi import HTTPException, status
 
-from app.models import User, UserCredentials
+from app.models import User
 from app.services.jwt_service import JWTService, TokenPair
 from app.services.password_service import PasswordService
-from app.services.credential_encryption_service import CredentialEncryptionService
 from app.config import settings
 
 
@@ -22,9 +21,7 @@ class UserRegistrationRequest(BaseModel):
     email: EmailStr
     password: str
     confirm_password: Optional[str] = None
-    github_token: Optional[str] = None
-    ai_api_key: Optional[str] = None
-    preferred_ai_provider: str = "openai"  # "openai" or "gemini"
+    preferred_ai_provider: str = "gemini"  # "openai" or "gemini" 
     preferred_language: str = "python"
     
     @validator('confirm_password')
@@ -80,15 +77,6 @@ class AuthService:
         """Initialize authentication service with required components."""
         self.jwt_service = JWTService()
         self.password_service = PasswordService()
-        
-        # Initialize credential encryption service with fallback
-        master_key = settings.credential_encryption_key
-        if not master_key or master_key == "your-encryption-key-for-api-keys":
-            # Use a default key for development/testing
-            import os
-            master_key = os.getenv("MASTER_ENCRYPTION_KEY", "dev-fallback-key-not-for-production")
-        
-        self.credential_service = CredentialEncryptionService(master_key)
     
     async def register_user(
         self, 
@@ -118,22 +106,6 @@ class AuthService:
             if existing_user:
                 return False, None, "Email address is already registered"
             
-            # Validate API credentials if provided (skip validation for now to avoid external API calls)
-            # if registration_data.github_token:
-            #     is_valid, error = await self.credential_service.validate_github_token(
-            #         registration_data.github_token
-            #     )
-            #     if not is_valid:
-            #         return False, None, f"GitHub token validation failed: {error}"
-            
-            # if registration_data.ai_api_key:
-            #     is_valid, error = await self.credential_service.validate_ai_api_key(
-            #         registration_data.ai_api_key,
-            #         registration_data.preferred_ai_provider
-            #     )
-            #     if not is_valid:
-            #         return False, None, f"AI API key validation failed: {error}"
-            
             # Hash password
             hashed_password = self.password_service.hash_password(registration_data.password)
             
@@ -148,37 +120,6 @@ class AuthService:
             
             db.add(user)
             db.flush()  # Get user ID without committing
-            
-            # Encrypt and store API credentials if provided
-            if registration_data.github_token or registration_data.ai_api_key:
-                user_salt = self.credential_service.generate_user_salt()
-                
-                github_encrypted = ""
-                ai_key_encrypted = ""
-                
-                if registration_data.github_token:
-                    github_encrypted = self.credential_service.encrypt_credential(
-                        registration_data.github_token,
-                        user.id,
-                        user_salt
-                    )
-                
-                if registration_data.ai_api_key:
-                    ai_key_encrypted = self.credential_service.encrypt_credential(
-                        registration_data.ai_api_key,
-                        user.id,
-                        user_salt
-                    )
-                
-                # Create credentials record
-                credentials = UserCredentials(
-                    user_id=user.id,
-                    github_token_encrypted=github_encrypted,
-                    ai_api_key_encrypted=ai_key_encrypted,
-                    encryption_key_hash=self.credential_service.hash_encryption_key(user_salt)
-                )
-                
-                db.add(credentials)
             
             # Generate JWT tokens
             token_pair = self.jwt_service.generate_token_pair(user, db)
@@ -326,58 +267,3 @@ class AuthService:
             return False, None, "User not found or inactive"
         
         return True, user, None
-    
-    def get_user_credentials(
-        self, 
-        user: User, 
-        db: Session
-    ) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Get decrypted user credentials.
-        
-        Args:
-            user: User object
-            db: Database session
-            
-        Returns:
-            Tuple of (github_token, ai_api_key)
-        """
-        try:
-            credentials = db.query(UserCredentials).filter(
-                UserCredentials.user_id == user.id
-            ).first()
-            
-            if not credentials:
-                return None, None
-            
-            # For decryption, we need the user salt from the encryption key hash
-            # This is a simplified approach - in production, you'd store the salt separately
-            user_salt = self.credential_service.generate_user_salt()  # This should be retrieved properly
-            
-            github_token = None
-            ai_api_key = None
-            
-            if credentials.github_token_encrypted:
-                try:
-                    github_token = self.credential_service.decrypt_credential(
-                        credentials.github_token_encrypted,
-                        user.id,
-                        user_salt
-                    )
-                except Exception:
-                    pass  # Handle decryption errors gracefully
-            
-            if credentials.ai_api_key_encrypted:
-                try:
-                    ai_api_key = self.credential_service.decrypt_credential(
-                        credentials.ai_api_key_encrypted,
-                        user.id,
-                        user_salt
-                    )
-                except Exception:
-                    pass  # Handle decryption errors gracefully
-            
-            return github_token, ai_api_key
-            
-        except Exception:
-            return None, None
