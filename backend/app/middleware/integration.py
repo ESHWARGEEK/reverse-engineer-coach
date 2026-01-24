@@ -203,13 +203,13 @@ def setup_validation_middleware(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
-    # Add validation middleware
-    app.add_middleware(ValidationMiddleware)
+    # Temporarily disable validation middleware for debugging
+    # app.add_middleware(ValidationMiddleware)
     
     # Add sanitization middleware
-    app.add_middleware(RequestSanitizationMiddleware)
+    # app.add_middleware(RequestSanitizationMiddleware)
     
-    logger.info("Validation and sanitization middleware registered")
+    logger.info("Validation middleware temporarily disabled for debugging")
     """
     Set up rate limiting middleware for the FastAPI application.
     
