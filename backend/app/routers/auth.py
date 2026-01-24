@@ -150,6 +150,44 @@ async def init_database_debug():
         }
 
 
+@router.post("/debug/test-login")
+async def test_login_debug(request: Request, db: Session = Depends(get_db)):
+    """Debug endpoint to test login without Pydantic validation"""
+    try:
+        # Get raw JSON data
+        body = await request.json()
+        email = body.get("email")
+        password = body.get("password")
+        
+        if not email or not password:
+            return {
+                "success": False,
+                "error": "Email and password are required",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        
+        # Create login data manually
+        login_data = UserLoginRequest(email=email, password=password)
+        
+        # Try login
+        success, response, error = await auth_service.login_user(login_data, db)
+        
+        return {
+            "success": success,
+            "error": error,
+            "response_type": type(response).__name__ if response else None,
+            "has_tokens": bool(response and hasattr(response, 'access_token')),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Debug login failed: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+
 @router.post("/register", response_model=UserRegistrationResponse)
 # @validate_auth_registration  # Temporarily disabled for debugging
 # @rate_limit(max_requests=10, window_seconds=3600)  # Temporarily disabled for debugging
