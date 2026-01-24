@@ -17,17 +17,30 @@ class PerformanceCache:
     
     def __init__(self):
         # Synchronous Redis client for backward compatibility
-        self.redis_client = redis.from_url(
-            settings.redis_url,
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5,
-            max_connections=20
-        )
+        try:
+            self.redis_client = redis.from_url(
+                settings.redis_url,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5,
+                max_connections=20
+            )
+            # Test connection
+            self.redis_client.ping()
+            self.redis_available = True
+            logger.info("Redis connection established successfully")
+        except Exception as e:
+            logger.warning(f"Redis connection failed, using in-memory fallback: {e}")
+            self.redis_client = None
+            self.redis_available = False
         
         # Async Redis client for better performance
         self._async_client = None
         self._connection_pool = None
+        
+        # In-memory fallback cache
+        self._memory_cache = {}
+        self._memory_cache_expiry = {}
         
         # Request debouncing
         self._pending_requests: Dict[str, asyncio.Future] = {}
@@ -44,13 +57,23 @@ class PerformanceCache:
     
     async def _get_async_client(self):
         """Get or create async Redis client"""
+        if not self.redis_available:
+            return None
+            
         if self._async_client is None:
-            self._connection_pool = aioredis.ConnectionPool.from_url(
-                settings.redis_url,
-                decode_responses=True,
-                max_connections=20
-            )
-            self._async_client = aioredis.Redis(connection_pool=self._connection_pool)
+            try:
+                self._connection_pool = aioredis.ConnectionPool.from_url(
+                    settings.redis_url,
+                    decode_responses=True,
+                    max_connections=20
+                )
+                self._async_client = aioredis.Redis(connection_pool=self._connection_pool)
+                # Test connection
+                await self._async_client.ping()
+            except Exception as e:
+                logger.warning(f"Async Redis connection failed: {e}")
+                self.redis_available = False
+                return None
         return self._async_client
     
     def _generate_cache_key(self, key: str, namespace: str = "default") -> str:
@@ -71,40 +94,48 @@ class PerformanceCache:
         cache_key = self._generate_cache_key(key, namespace)
         
         try:
-            client = await self._get_async_client()
-            value = await client.get(cache_key)
+            if self.redis_available:
+                client = await self._get_async_client()
+                if client:
+                    value = await client.get(cache_key)
+                    
+                    if value:
+                        self.stats['hits'] += 1
+                        return json.loads(value)
+                    else:
+                        self.stats['misses'] += 1
+                        return None
             
-            if value:
-                self.stats['hits'] += 1
-                return json.loads(value)
-            else:
-                self.stats['misses'] += 1
-                return None
+            # Fallback to in-memory cache
+            return self._get_from_memory(cache_key)
                 
         except Exception as e:
             self.stats['errors'] += 1
             logger.error(f"Cache get error for key {cache_key}: {e}")
-            return None
+            return self._get_from_memory(cache_key)
     
     async def set(self, key: str, value: Any, expire: int = 3600, namespace: str = "default") -> bool:
         """Set value in cache with expiration"""
         cache_key = self._generate_cache_key(key, namespace)
         
         try:
-            client = await self._get_async_client()
-            serialized_value = json.dumps(value, default=str)
+            if self.redis_available:
+                client = await self._get_async_client()
+                if client:
+                    serialized_value = json.dumps(value, default=str)
+                    result = await client.setex(cache_key, expire, serialized_value)
+                    
+                    if result:
+                        self.stats['sets'] += 1
+                        return True
             
-            result = await client.setex(cache_key, expire, serialized_value)
-            
-            if result:
-                self.stats['sets'] += 1
-                return True
-            return False
+            # Fallback to in-memory cache
+            return self._set_in_memory(cache_key, value, expire)
             
         except Exception as e:
             self.stats['errors'] += 1
             logger.error(f"Cache set error for key {cache_key}: {e}")
-            return False
+            return self._set_in_memory(cache_key, value, expire)
     
     async def delete(self, key: str, namespace: str = "default") -> bool:
         """Delete key from cache"""
@@ -261,11 +292,50 @@ class PerformanceCache:
     async def ping(self) -> bool:
         """Ping Redis server to check connectivity"""
         try:
-            client = await self._get_async_client()
-            result = await client.ping()
-            return result
+            if self.redis_available:
+                client = await self._get_async_client()
+                if client:
+                    result = await client.ping()
+                    return result
+            
+            # If Redis is not available, return True for in-memory cache
+            return True
         except Exception as e:
             logger.error(f"Cache ping failed: {e}")
+            self.redis_available = False
+            return True  # In-memory cache is always available
+    
+    def _get_from_memory(self, cache_key: str) -> Optional[Any]:
+        """Get value from in-memory cache"""
+        import time
+        
+        if cache_key in self._memory_cache:
+            # Check expiry
+            if cache_key in self._memory_cache_expiry:
+                if time.time() > self._memory_cache_expiry[cache_key]:
+                    # Expired
+                    del self._memory_cache[cache_key]
+                    del self._memory_cache_expiry[cache_key]
+                    self.stats['misses'] += 1
+                    return None
+            
+            self.stats['hits'] += 1
+            return self._memory_cache[cache_key]
+        
+        self.stats['misses'] += 1
+        return None
+    
+    def _set_in_memory(self, cache_key: str, value: Any, expire: int = 3600) -> bool:
+        """Set value in in-memory cache"""
+        import time
+        
+        try:
+            self._memory_cache[cache_key] = value
+            self._memory_cache_expiry[cache_key] = time.time() + expire
+            self.stats['sets'] += 1
+            return True
+        except Exception as e:
+            logger.error(f"In-memory cache set error: {e}")
             return False
 
 # Enhanced cache decorators
