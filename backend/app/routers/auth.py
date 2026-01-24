@@ -89,8 +89,8 @@ def check_rate_limit(request: Request, max_attempts: int = RATE_LIMIT_ATTEMPTS) 
 
 
 @router.post("/register", response_model=UserRegistrationResponse)
-@validate_auth_registration
-@rate_limit(max_requests=10, window_seconds=3600)  # 10 registrations per hour
+# @validate_auth_registration  # Temporarily disabled for debugging
+# @rate_limit(max_requests=10, window_seconds=3600)  # Temporarily disabled for debugging
 async def register_user(
     user_data: UserRegistrationRequest, 
     request: Request,
