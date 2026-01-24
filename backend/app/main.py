@@ -13,6 +13,7 @@ import logging
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from datetime import datetime
+from contextlib import asynccontextmanager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -20,12 +21,39 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown events."""
+    # Startup
+    logger.info("Starting up Reverse Engineer Coach API...")
+    
+    # Initialize database tables
+    try:
+        from app.database import engine, Base
+        from app import models  # Import all models to register them
+        
+        logger.info("Creating database tables if they don't exist...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database initialization completed successfully!")
+        
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        # Don't fail startup - let the app start and show the error in health checks
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Reverse Engineer Coach API...")
+
+
 app = FastAPI(
     title="Reverse Engineer Coach API",
     description="AI-powered educational platform for learning software architecture with enhanced authentication",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Request ID middleware for error tracking
