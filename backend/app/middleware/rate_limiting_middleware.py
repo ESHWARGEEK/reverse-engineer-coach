@@ -249,7 +249,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         reset_time: Optional[str] = None
     ) -> JSONResponse:
         """
-        Create standardized rate limit error response.
+        Create standardized rate limit error response with CORS headers.
         
         Args:
             message: Error message
@@ -258,7 +258,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             reset_time: When rate limit resets
             
         Returns:
-            JSONResponse with rate limit error
+            JSONResponse with rate limit error and CORS headers
         """
         content = {
             "detail": message,
@@ -272,6 +272,15 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             headers["Retry-After"] = str(retry_after)
         if reset_time:
             headers["X-RateLimit-Reset"] = reset_time
+        
+        # Add CORS headers to error responses
+        headers.update({
+            "Access-Control-Allow-Origin": "https://reveng.netlify.app",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, X-Request-ID, X-Requested-With",
+            "Access-Control-Expose-Headers": "X-Request-ID, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset"
+        })
         
         return JSONResponse(
             status_code=status_code,

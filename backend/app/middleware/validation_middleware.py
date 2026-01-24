@@ -121,9 +121,20 @@ class ValidationMiddleware(BaseHTTPMiddleware):
             
         except Exception as e:
             logger.error(f"Validation middleware error: {e}")
+            
+            # Create error response with CORS headers
+            headers = {
+                "Access-Control-Allow-Origin": "https://reveng.netlify.app",
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, X-Request-ID, X-Requested-With",
+                "Access-Control-Expose-Headers": "X-Request-ID, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset"
+            }
+            
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"detail": "Internal validation error"}
+                content={"detail": "Internal validation error"},
+                headers=headers
             )
     
     def _should_skip_validation(self, request: Request) -> bool:
@@ -362,21 +373,31 @@ class ValidationMiddleware(BaseHTTPMiddleware):
     
     def _create_validation_error_response(self, errors: Dict[str, str]) -> JSONResponse:
         """
-        Create standardized validation error response.
+        Create standardized validation error response with CORS headers.
         
         Args:
             errors: Dictionary of validation errors
             
         Returns:
-            JSONResponse with validation errors
+            JSONResponse with validation errors and CORS headers
         """
+        # Add CORS headers to validation error responses
+        headers = {
+            "Access-Control-Allow-Origin": "https://reveng.netlify.app",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, X-Request-ID, X-Requested-With",
+            "Access-Control-Expose-Headers": "X-Request-ID, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset"
+        }
+        
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "detail": "Validation failed",
                 "errors": errors,
                 "code": "VALIDATION_ERROR"
-            }
+            },
+            headers=headers
         )
 
 
@@ -412,9 +433,20 @@ class RequestSanitizationMiddleware(BaseHTTPMiddleware):
             
         except Exception as e:
             logger.error(f"Sanitization middleware error: {e}")
+            
+            # Create error response with CORS headers
+            headers = {
+                "Access-Control-Allow-Origin": "https://reveng.netlify.app",
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, X-Request-ID, X-Requested-With",
+                "Access-Control-Expose-Headers": "X-Request-ID, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset"
+            }
+            
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"detail": "Request processing error"}
+                content={"detail": "Request processing error"},
+                headers=headers
             )
 
 
@@ -436,21 +468,31 @@ def validate_request_data(data: Dict[str, Any], validation_rules: Dict[str, Dict
 
 def create_validation_response(errors: Dict[str, str]) -> JSONResponse:
     """
-    Create standardized validation error response.
+    Create standardized validation error response with CORS headers.
     
     Args:
         errors: Dictionary of validation errors
         
     Returns:
-        JSONResponse with validation errors
+        JSONResponse with validation errors and CORS headers
     """
+    # Add CORS headers to validation error responses
+    headers = {
+        "Access-Control-Allow-Origin": "https://reveng.netlify.app",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, X-Request-ID, X-Requested-With",
+        "Access-Control-Expose-Headers": "X-Request-ID, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset"
+    }
+    
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "detail": "Validation failed",
             "errors": errors,
             "code": "VALIDATION_ERROR"
-        }
+        },
+        headers=headers
     )
 
 
