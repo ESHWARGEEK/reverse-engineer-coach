@@ -43,7 +43,7 @@ auth_service = AuthService()
 
 # Rate limiting storage (in production, use Redis)
 rate_limit_storage = defaultdict(list)
-RATE_LIMIT_ATTEMPTS = 5  # Max attempts
+RATE_LIMIT_ATTEMPTS = 10  # Max attempts
 RATE_LIMIT_WINDOW = 300  # 5 minutes in seconds
 
 
@@ -90,7 +90,7 @@ def check_rate_limit(request: Request, max_attempts: int = RATE_LIMIT_ATTEMPTS) 
 
 @router.post("/register", response_model=UserRegistrationResponse)
 @validate_auth_registration
-@rate_limit(max_requests=3, window_seconds=3600)  # 3 registrations per hour
+@rate_limit(max_requests=10, window_seconds=3600)  # 10 registrations per hour
 async def register_user(
     user_data: UserRegistrationRequest, 
     request: Request,
@@ -126,7 +126,7 @@ async def register_user(
 
 @router.post("/login", response_model=UserLoginResponse)
 @validate_auth_login
-@rate_limit(max_requests=5, window_seconds=300)  # 5 login attempts per 5 minutes
+@rate_limit(max_requests=15, window_seconds=300)  # 15 login attempts per 5 minutes
 async def login_user(
     user_data: UserLoginRequest, 
     request: Request,
@@ -309,3 +309,21 @@ async def test_api_keys(current_user: User = Depends(get_current_user_enhanced))
     # For now, just return whether keys exist
     
     return results
+
+
+@router.post("/debug/reset-rate-limits")
+async def reset_rate_limits(request: Request):
+    """Reset rate limits for testing purposes (development only)"""
+    
+    # Only allow in development environment
+    from app.config import settings
+    if settings.environment != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Rate limit reset only available in development mode"
+        )
+    
+    client_ip = request.client.host
+    rate_limit_storage[client_ip] = []
+    
+    return {"message": f"Rate limits reset for IP: {client_ip}"}
