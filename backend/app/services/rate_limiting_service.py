@@ -106,8 +106,8 @@ class RateLimitingService:
         
         # Default rate limit rules for different endpoint types
         self.default_rules = {
-            'auth_login': RateLimitRule(5, 300),  # 5 requests per 5 minutes
-            'auth_register': RateLimitRule(3, 3600),  # 3 requests per hour
+            'auth_login': RateLimitRule(15, 300),  # 15 requests per 5 minutes
+            'auth_register': RateLimitRule(10, 3600),  # 10 requests per hour
             'auth_refresh': RateLimitRule(10, 60),  # 10 requests per minute
             'api_general': RateLimitRule(100, 60),  # 100 requests per minute
             'api_discovery': RateLimitRule(20, 60),  # 20 requests per minute
@@ -338,6 +338,58 @@ class RateLimitingService:
         """Clean up expired rate limiting data."""
         self.storage.clear_expired_data()
         logger.info("Cleaned up expired rate limiting data")
+    
+    def reset_rate_limits_for_key(self, key: str, endpoint_type: str = None):
+        """
+        Reset rate limits for a specific key (IP or user).
+        
+        Args:
+            key: The key to reset (IP address or user ID)
+            endpoint_type: Optional endpoint type to reset specific limits
+        """
+        if endpoint_type:
+            # Reset specific endpoint type
+            full_key = f"ip_{endpoint_type}:{key}"
+            if full_key in self.storage._data:
+                del self.storage._data[full_key]
+            
+            full_key = f"user_{endpoint_type}:{key}"
+            if full_key in self.storage._data:
+                del self.storage._data[full_key]
+        else:
+            # Reset all rate limits for this key
+            keys_to_remove = []
+            for stored_key in self.storage._data.keys():
+                if key in stored_key:
+                    keys_to_remove.append(stored_key)
+            
+            for stored_key in keys_to_remove:
+                del self.storage._data[stored_key]
+        
+        logger.info(f"Reset rate limits for key: {key}, endpoint_type: {endpoint_type}")
+    
+    def get_rate_limit_status(self, key: str, endpoint_type: str = 'api_general') -> Dict:
+        """
+        Get current rate limit status for a key.
+        
+        Args:
+            key: The key to check (IP address or user ID)
+            endpoint_type: Endpoint type to check
+            
+        Returns:
+            Dictionary with rate limit status
+        """
+        rule = self.get_rate_limit_for_endpoint(endpoint_type)
+        result = self.check_rate_limit(key, rule, f"ip_{endpoint_type}")
+        
+        return {
+            'endpoint_type': endpoint_type,
+            'max_requests': rule.max_requests,
+            'window_seconds': rule.window_seconds,
+            'remaining': result.remaining,
+            'reset_time': result.reset_time.isoformat(),
+            'allowed': result.allowed
+        }
 
 
 # Global rate limiting service instance

@@ -324,6 +324,39 @@ async def reset_rate_limits(request: Request):
         )
     
     client_ip = request.client.host
+    
+    # Reset rate limits using the rate limiting service
+    from app.services.rate_limiting_service import rate_limiting_service
+    rate_limiting_service.reset_rate_limits_for_key(client_ip, "auth_register")
+    rate_limiting_service.reset_rate_limits_for_key(client_ip, "auth_login")
+    
+    # Also reset the local rate limit storage
     rate_limit_storage[client_ip] = []
     
     return {"message": f"Rate limits reset for IP: {client_ip}"}
+
+
+@router.get("/debug/rate-limit-status")
+async def get_rate_limit_status(request: Request):
+    """Get current rate limit status for debugging"""
+    
+    # Only allow in development environment
+    from app.config import settings
+    if settings.environment != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Rate limit status only available in development mode"
+        )
+    
+    client_ip = request.client.host
+    
+    from app.services.rate_limiting_service import rate_limiting_service
+    
+    status_info = {
+        "client_ip": client_ip,
+        "auth_register": rate_limiting_service.get_rate_limit_status(client_ip, "auth_register"),
+        "auth_login": rate_limiting_service.get_rate_limit_status(client_ip, "auth_login"),
+        "local_storage_count": len(rate_limit_storage.get(client_ip, []))
+    }
+    
+    return status_info
