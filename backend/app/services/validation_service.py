@@ -648,16 +648,18 @@ class ValidationService:
             result.add_error("user_agent", "User agent is required")
             return result
         
-        # Check for blocked user agents (bots, scrapers)
+        # Check for blocked user agents (only block clearly malicious ones)
         blocked_patterns = [
-            r'.*bot.*',
-            r'.*crawler.*',
-            r'.*spider.*',
-            r'.*scraper.*',
-            r'^curl',
-            r'^wget',
-            r'.*python.*',
-            r'.*java.*',
+            r'.*masscan.*',
+            r'.*nmap.*',
+            r'.*sqlmap.*',
+            r'.*nikto.*',
+            r'.*dirb.*',
+            r'.*gobuster.*',
+            r'.*wpscan.*',
+            r'.*nuclei.*',
+            r'.*burpsuite.*',
+            r'.*owasp-zap.*',
         ]
         
         user_agent_lower = user_agent.lower()
