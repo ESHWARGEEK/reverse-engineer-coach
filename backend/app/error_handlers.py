@@ -131,23 +131,28 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     
     request_id = getattr(request.state, 'request_id', None)
     
-    # Map status codes to user-friendly messages
-    status_messages = {
-        400: "Bad request. Please check your input and try again.",
-        401: "Authentication required. Please log in to continue.",
-        403: "Access denied. You don't have permission to perform this action.",
-        404: "The requested resource was not found.",
-        405: "Method not allowed for this endpoint.",
-        409: "Conflict. The resource already exists or is in use.",
-        422: "Invalid input data. Please check your request and try again.",
-        429: "Too many requests. Please try again later.",
-        500: "Internal server error. Please try again later.",
-        502: "Bad gateway. The service is temporarily unavailable.",
-        503: "Service unavailable. Please try again later.",
-        504: "Gateway timeout. The request took too long to process."
-    }
+    # Use the original detail if it's meaningful, otherwise use generic message
+    if exc.detail and exc.detail != "Bad Request" and len(exc.detail) > 10:
+        # Use the specific error message from the service
+        message = exc.detail
+    else:
+        # Map status codes to user-friendly messages for generic errors
+        status_messages = {
+            400: "Bad request. Please check your input and try again.",
+            401: "Authentication required. Please log in to continue.",
+            403: "Access denied. You don't have permission to perform this action.",
+            404: "The requested resource was not found.",
+            405: "Method not allowed for this endpoint.",
+            409: "Conflict. The resource already exists or is in use.",
+            422: "Invalid input data. Please check your request and try again.",
+            429: "Too many requests. Please try again later.",
+            500: "Internal server error. Please try again later.",
+            502: "Bad gateway. The service is temporarily unavailable.",
+            503: "Service unavailable. Please try again later.",
+            504: "Gateway timeout. The request took too long to process."
+        }
+        message = status_messages.get(exc.status_code, exc.detail)
     
-    message = status_messages.get(exc.status_code, exc.detail)
     error_code = f"HTTP_{exc.status_code}"
     
     # Log non-client errors
