@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel
 from typing import Optional
 import time
+import logging
 from collections import defaultdict
 
 from app.database import get_db
@@ -37,6 +38,7 @@ from app.schemas.validation_schemas import ValidationRules
 
 router = APIRouter()
 security = HTTPBearer()
+logger = logging.getLogger(__name__)
 
 # Initialize auth service
 auth_service = AuthService()
@@ -105,17 +107,19 @@ async def register_user(
     - Implements rate limiting to prevent abuse
     """
     
-    # Check rate limit
-    if not check_rate_limit(request):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many registration attempts. Please try again later."
-        )
+    # Temporarily disable manual rate limit check for debugging
+    # if not check_rate_limit(request):
+    #     raise HTTPException(
+    #         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+    #         detail="Too many registration attempts. Please try again later."
+    #     )
     
     # Register user using auth service
     success, response, error = await auth_service.register_user(user_data, db)
     
     if not success:
+        # Log the actual error for debugging
+        logger.error(f"Registration failed: {error}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error
