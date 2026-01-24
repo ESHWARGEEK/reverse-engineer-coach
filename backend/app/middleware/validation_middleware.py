@@ -138,6 +138,10 @@ class ValidationMiddleware(BaseHTTPMiddleware):
         """
         path = request.url.path
         
+        # Skip validation for OPTIONS requests (CORS preflight)
+        if request.method == "OPTIONS":
+            return True
+        
         # Skip validation for specific routes
         if path in self.skip_validation_routes:
             return True
