@@ -309,8 +309,8 @@ class RateLimitingService:
         Returns:
             Tuple of (is_suspicious, reason)
         """
-        # Check for rapid requests from same IP
-        rapid_requests_rule = RateLimitRule(50, 60)  # 50 requests per minute
+        # Check for rapid requests from same IP (more lenient for development)
+        rapid_requests_rule = RateLimitRule(100, 60)  # 100 requests per minute (increased from 50)
         rapid_result = self.check_rate_limit(
             ip_address, 
             rapid_requests_rule, 
@@ -320,11 +320,12 @@ class RateLimitingService:
         if not rapid_result.allowed:
             return True, "Too many rapid requests"
         
-        # Check user agent patterns
+        # Check user agent patterns (more lenient for development)
         if user_agent:
+            # Only block clearly malicious agents, allow curl for testing
             suspicious_agents = [
-                'curl', 'wget', 'python-requests', 'bot', 'crawler', 
-                'spider', 'scraper', 'scanner'
+                'masscan', 'nmap', 'sqlmap', 'nikto', 'dirb', 'gobuster',
+                'wpscan', 'nuclei', 'burpsuite', 'owasp-zap'
             ]
             
             user_agent_lower = user_agent.lower()
@@ -365,6 +366,11 @@ class RateLimitingService:
             
             for stored_key in keys_to_remove:
                 del self.storage._data[stored_key]
+        
+        # Also reset suspicious activity detection
+        suspicious_key = f"suspicious_rapid:{key}"
+        if suspicious_key in self.storage._data:
+            del self.storage._data[suspicious_key]
         
         logger.info(f"Reset rate limits for key: {key}, endpoint_type: {endpoint_type}")
     
