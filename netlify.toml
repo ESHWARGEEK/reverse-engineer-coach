@@ -1,13 +1,17 @@
 [build]
-  command = "npm ci && npm run build:frontend"
-  publish = "frontend/build"
+  base = "frontend"
+  command = "npm ci && npm run build:prod"
+  publish = "build"
 
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "10"
-  CI = "true"
+  CI = "false"
   SKIP_PREFLIGHT_CHECK = "true"
+  GENERATE_SOURCEMAP = "false"
   NPM_CONFIG_LEGACY_PEER_DEPS = "true"
+  REACT_APP_API_URL = "https://reverse-coach-backend.onrender.com"
+  REACT_APP_ENVIRONMENT = "production"
 
 # SPA redirect for client-side routing
 [[redirects]]
