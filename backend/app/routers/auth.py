@@ -2,7 +2,7 @@
 Enhanced Authentication API endpoints with JWT tokens and comprehensive security
 """
 
-from datetime import timedelta
+from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -88,6 +88,12 @@ def check_rate_limit(request: Request, max_attempts: int = RATE_LIMIT_ATTEMPTS) 
     # Record this attempt
     rate_limit_storage[client_ip].append(current_time)
     return True
+
+
+@router.post("/debug/test-simple")
+async def test_simple_registration():
+    """Simple test endpoint to check if basic FastAPI functionality works"""
+    return {"message": "Simple test endpoint works", "timestamp": datetime.utcnow().isoformat()}
 
 
 @router.post("/register", response_model=UserRegistrationResponse)
