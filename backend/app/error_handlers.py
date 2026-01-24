@@ -392,14 +392,18 @@ class ServiceHealthMonitor:
             
             elif service_name == "database":
                 from app.database import get_db
+                from sqlalchemy import text
                 db = next(get_db())
-                db.execute("SELECT 1")
+                db.execute(text("SELECT 1"))
                 db.close()
                 return {"status": "healthy", "service": service_name}
             
             elif service_name == "cache":
                 from app.cache import cache
-                await cache.ping()
+                # Test cache connectivity using ping
+                ping_result = await cache.ping()
+                if not ping_result:
+                    raise Exception("Cache ping failed")
                 return {"status": "healthy", "service": service_name}
             
             elif service_name == "llm":

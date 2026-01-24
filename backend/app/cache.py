@@ -257,6 +257,16 @@ class PerformanceCache:
                 await self._connection_pool.disconnect()
         except Exception as e:
             logger.error(f"Error closing cache connections: {e}")
+    
+    async def ping(self) -> bool:
+        """Ping Redis server to check connectivity"""
+        try:
+            client = await self._get_async_client()
+            result = await client.ping()
+            return result
+        except Exception as e:
+            logger.error(f"Cache ping failed: {e}")
+            return False
 
 # Enhanced cache decorators
 def cache_result(expire: int = 3600, namespace: str = "default", key_func: Optional[Callable] = None):
