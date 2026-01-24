@@ -126,6 +126,30 @@ async def test_registration_debug(db: Session = Depends(get_db)):
         }
 
 
+@router.post("/debug/init-database")
+async def init_database_debug():
+    """Debug endpoint to initialize database tables"""
+    try:
+        from app.database import engine, Base
+        from app import models  # Import all models to register them
+        
+        # Create all tables
+        Base.metadata.create_all(bind=engine)
+        
+        return {
+            "success": True,
+            "message": "Database tables created successfully",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Database initialization failed: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+
 @router.post("/register", response_model=UserRegistrationResponse)
 # @validate_auth_registration  # Temporarily disabled for debugging
 # @rate_limit(max_requests=10, window_seconds=3600)  # Temporarily disabled for debugging
