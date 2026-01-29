@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Navigation Test</title>
+</head>
+<body>
+    <h1>Navigation Test</h1>
+    <p>Current hash: <span id="current-hash"></span></p>
+    <button onclick="testNavigation()">Test Navigate to /create-project</button>
+    <div id="result"></div>
+    
+    <script>
+        function updateHash() {
+            document.getElementById('current-hash').textContent = window.location.hash || '(none)';
+        }
+        
+        function testNavigation() {
+            try {
+                window.location.hash = '/create-project';
+                document.getElementById('result').innerHTML = '<p style="color: green;">✅ Navigation successful</p>';
+                updateHash();
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<p style="color: red;">❌ Navigation failed: ' + error.message + '</p>';
+            }
+        }
+        
+        window.addEventListener('hashchange', updateHash);
+        updateHash();
+    </script>
+</body>
+</html>
