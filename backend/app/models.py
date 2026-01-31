@@ -128,7 +128,6 @@ class WorkflowExecution(Base):
     
     # Relationships
     user = relationship("User")
-    learning_specs = relationship("LearningSpec", back_populates="project", cascade="all, delete-orphan")
 
 
 class LearningSpec(Base):
