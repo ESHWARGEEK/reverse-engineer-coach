@@ -17,6 +17,10 @@ class CORSService:
     def __init__(self):
         self.environment = os.getenv("ENVIRONMENT", "development")
         self.debug = os.getenv("DEBUG", "false").lower() == "true"
+        
+        # Log environment detection for debugging
+        logger.info(f"CORS Service initialized - Environment: {self.environment}, Debug: {self.debug}")
+        logger.info(f"CORS_ORIGINS env var: {os.getenv('CORS_ORIGINS', 'NOT SET')}")
     
     def get_allowed_origins(self) -> List[str]:
         """
@@ -28,13 +32,17 @@ class CORSService:
         # Get origins from environment variable
         origins_env = os.getenv("CORS_ORIGINS", "")
         
+        # ALWAYS include Netlify URLs regardless of environment
+        # This ensures CORS works even if environment variables are misconfigured
+        base_origins = [
+            "https://rev-eng.netlify.app",
+            "https://reveng.netlify.app"
+        ]
+        logger.info(f"Base Netlify origins always included: {base_origins}")
+        
         if self.environment == "production":
-            # Production: Always start with hardcoded Netlify URLs to ensure they work
-            allowed_origins = [
-                "https://rev-eng.netlify.app",
-                "https://reveng.netlify.app"
-            ]
-            logger.info("Hardcoded Netlify URLs added to allowed origins")
+            # Production: Start with base origins
+            allowed_origins = base_origins.copy()
             
             if origins_env:
                 # Parse and validate each additional origin from environment
@@ -44,7 +52,7 @@ class CORSService:
                         allowed_origins.append(origin)
                         logger.info(f"Added additional origin from environment: {origin}")
                     elif origin in allowed_origins:
-                        logger.info(f"Origin already in hardcoded list (skipped): {origin}")
+                        logger.info(f"Origin already in base list (skipped): {origin}")
                     else:
                         logger.warning(f"Invalid origin rejected: {origin}")
             
@@ -54,37 +62,33 @@ class CORSService:
             return allowed_origins
         
         elif self.environment == "staging":
-            # Staging: allow staging domains
-            staging_origins = [
+            # Staging: allow staging domains plus base origins
+            allowed_origins = [
                 "https://staging.yourdomain.com",
-                "https://preview.yourdomain.com",
-                "https://rev-eng.netlify.app",
-                "https://reveng.netlify.app"
-            ]
+                "https://preview.yourdomain.com"
+            ] + base_origins
             
             if origins_env:
                 for origin in origins_env.split(","):
                     origin = origin.strip()
-                    if self._is_valid_origin(origin) and self._is_staging_origin(origin):
-                        staging_origins.append(origin)
+                    if self._is_valid_origin(origin) and self._is_staging_origin(origin) and origin not in allowed_origins:
+                        allowed_origins.append(origin)
             
-            return staging_origins
+            return allowed_origins
         
         else:
-            # Development: allow localhost and development origins
+            # Development: allow localhost and development origins plus base origins
             dev_origins = [
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
                 "http://localhost:3001",
-                "http://127.0.0.1:3001",
-                "https://rev-eng.netlify.app",
-                "https://reveng.netlify.app"
-            ]
+                "http://127.0.0.1:3001"
+            ] + base_origins
             
             if origins_env:
                 for origin in origins_env.split(","):
                     origin = origin.strip()
-                    if self._is_valid_origin(origin):
+                    if self._is_valid_origin(origin) and origin not in dev_origins:
                         dev_origins.append(origin)
             
             return list(set(dev_origins))  # Remove duplicates
