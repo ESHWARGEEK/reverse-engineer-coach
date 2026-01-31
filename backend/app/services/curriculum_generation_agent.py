@@ -21,9 +21,12 @@ from enum import Enum
 from ..llm_provider import LLMProvider
 from .repository_analysis_agent import RepositoryAnalysis, LearningOpportunity
 from .repository_discovery_agent import DiscoveredRepository
-from ..cache import cache_manager
+from ..cache import PerformanceCache
 
 logger = logging.getLogger(__name__)
+
+# Create cache instance
+cache_manager = PerformanceCache()
 
 class TaskType(Enum):
     EXPLORATION = "exploration"

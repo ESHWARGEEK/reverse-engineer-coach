@@ -23,10 +23,13 @@ from sqlalchemy.orm import Session
 
 from ..llm_provider import LLMProvider
 from ..github_client import GitHubClient
-from ..models import User, Project
-from ..cache import cache_manager
+from ..models import User, LearningProject
+from ..cache import PerformanceCache
 
 logger = logging.getLogger(__name__)
+
+# Create cache instance
+cache_manager = PerformanceCache()
 
 class DifficultyLevel(Enum):
     BEGINNER = "beginner"

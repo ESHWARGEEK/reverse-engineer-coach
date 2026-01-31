@@ -22,9 +22,12 @@ import os
 
 from ..llm_provider import LLMProvider
 from ..github_client import GitHubClient
-from ..cache import cache_manager
+from ..cache import PerformanceCache
 
 logger = logging.getLogger(__name__)
+
+# Create cache instance
+cache_manager = PerformanceCache()
 
 class ArchitecturalPattern(Enum):
     MVC = "mvc"

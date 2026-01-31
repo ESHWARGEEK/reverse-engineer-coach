@@ -573,3 +573,13 @@ async def create_llm_provider(provider_type: Optional[LLMProvider] = None) -> Ba
         return LLMProviderFactory.create_provider(provider_type)
     else:
         return LLMProviderFactory.get_default_provider()
+
+# Factory function for dependency injection
+def get_llm_provider() -> BaseLLMProvider:
+    """Get LLM provider instance for dependency injection"""
+    try:
+        # Try to create OpenAI provider first
+        return LLMProviderFactory.create_provider(LLMProvider.OPENAI)
+    except Exception:
+        # Fallback to mock provider for development
+        return MockLLMProvider()

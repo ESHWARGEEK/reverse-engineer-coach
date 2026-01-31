@@ -733,3 +733,16 @@ class GitHubClient:
 async def create_github_client(token: Optional[str] = None) -> GitHubClient:
     """Create and return a GitHub client instance"""
     return GitHubClient(token)
+# Factory function for dependency injection
+def get_github_client() -> GitHubClient:
+    """Get GitHub client instance for dependency injection"""
+    import os
+    
+    # Get GitHub token from environment
+    github_token = os.getenv('GITHUB_TOKEN')
+    
+    if github_token:
+        return GitHubClient(auth_token=github_token)
+    else:
+        # Return client without token for public repositories
+        return GitHubClient()
