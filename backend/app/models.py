@@ -98,6 +98,7 @@ class LearningProject(Base):
     
     # Relationships
     user = relationship("User", back_populates="projects")
+    learning_specs = relationship("LearningSpec", back_populates="project", cascade="all, delete-orphan")
 
 
 class WorkflowExecution(Base):
