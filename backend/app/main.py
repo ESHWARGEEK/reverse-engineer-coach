@@ -185,15 +185,14 @@ async def metrics():
         # Fallback if prometheus_client is not installed
         return {"error": "Metrics not available - prometheus_client not installed"}
 
-# Temporarily disable enhanced workflow router to fix import issue
-# from app.routers import projects, files, coach_minimal as coach, github, auth, profile, dashboard, discovery, error_reporting, enhanced_workflow
-from app.routers import projects, files, coach_minimal as coach, github, auth, profile, dashboard, discovery, error_reporting
+# Import routers
+from app.routers import projects, files, coach_minimal as coach, github, auth, profile, dashboard, discovery, error_reporting, enhanced_workflow
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(profile.router, prefix="/api/v1/profile", tags=["profile"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["dashboard"])
 app.include_router(discovery.router, prefix="/api/v1", tags=["discovery"])
 app.include_router(error_reporting.router, prefix="/api/v1/errors", tags=["error_reporting"])
-# Temporarily disabled: app.include_router(enhanced_workflow.router, tags=["enhanced_workflow"])
+app.include_router(enhanced_workflow.router, tags=["enhanced_workflow"])
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(files.router, prefix="/api/v1/projects", tags=["files"])
 app.include_router(coach.router, tags=["coach"])
