@@ -29,32 +29,24 @@ class CORSService:
         origins_env = os.getenv("CORS_ORIGINS", "")
         
         if self.environment == "production":
-            # Production: strict origin control
-            allowed_origins = []
+            # Production: Always start with hardcoded Netlify URLs to ensure they work
+            allowed_origins = [
+                "https://rev-eng.netlify.app",
+                "https://reveng.netlify.app"
+            ]
+            logger.info("Hardcoded Netlify URLs added to allowed origins")
             
             if origins_env:
-                # Parse and validate each origin
+                # Parse and validate each additional origin from environment
                 for origin in origins_env.split(","):
                     origin = origin.strip()
-                    if self._is_valid_origin(origin):
+                    if self._is_valid_origin(origin) and origin not in allowed_origins:
                         allowed_origins.append(origin)
+                        logger.info(f"Added additional origin from environment: {origin}")
+                    elif origin in allowed_origins:
+                        logger.info(f"Origin already in hardcoded list (skipped): {origin}")
                     else:
                         logger.warning(f"Invalid origin rejected: {origin}")
-            
-            # Add default production origins if none specified
-            if not allowed_origins:
-                allowed_origins = [
-                    "https://rev-eng.netlify.app",
-                    "https://reveng.netlify.app"
-                ]
-                logger.info("No valid origins found, using default production origins")
-            
-            # Always ensure our Netlify URLs are included in production
-            netlify_urls = ["https://rev-eng.netlify.app", "https://reveng.netlify.app"]
-            for netlify_url in netlify_urls:
-                if netlify_url not in allowed_origins:
-                    allowed_origins.append(netlify_url)
-                    logger.info(f"Force-added Netlify URL to allowed origins: {netlify_url}")
             
             # Log final allowed origins for debugging
             logger.info(f"Final production allowed origins: {allowed_origins}")
