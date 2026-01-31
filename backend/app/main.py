@@ -107,6 +107,22 @@ async def root():
         "status": "running"
     }
 
+@app.get("/debug/cors")
+async def debug_cors():
+    """Debug endpoint to check CORS configuration"""
+    from app.services.cors_service import cors_service
+    
+    cors_config = cors_service.get_cors_config()
+    
+    return {
+        "environment": cors_service.environment,
+        "debug": cors_service.debug,
+        "cors_origins_env": os.getenv("CORS_ORIGINS", "NOT SET"),
+        "allowed_origins": cors_config["allow_origins"],
+        "cors_config": cors_config,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint with service status"""
