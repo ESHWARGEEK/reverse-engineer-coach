@@ -47,7 +47,14 @@ class CORSService:
                     "https://rev-eng.netlify.app",
                     "https://reveng.netlify.app"
                 ]
-                logger.warning("No valid origins found, using default production origins")
+                logger.info("No valid origins found, using default production origins")
+            
+            # Always ensure our Netlify URL is included in production
+            netlify_urls = ["https://rev-eng.netlify.app", "https://reveng.netlify.app"]
+            for netlify_url in netlify_urls:
+                if netlify_url not in allowed_origins:
+                    allowed_origins.append(netlify_url)
+                    logger.info(f"Added Netlify URL to allowed origins: {netlify_url}")
             
             return allowed_origins
         
@@ -175,8 +182,12 @@ class CORSService:
                 if parsed.scheme != "https":
                     return False
                 
-                # Allow netlify domains specifically
+                # Allow netlify domains specifically - be more permissive
                 if "netlify.app" in parsed.netloc:
+                    return True
+                    
+                # Allow our specific Netlify URLs
+                if parsed.netloc in ["rev-eng.netlify.app", "reveng.netlify.app"]:
                     return True
             else:
                 # Development: allow HTTP for localhost
