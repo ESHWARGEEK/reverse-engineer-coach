@@ -40,58 +40,26 @@ class CORSService:
         ]
         logger.info(f"Base Netlify origins always included: {base_origins}")
         
-        if self.environment == "production":
-            # Production: Start with base origins
-            allowed_origins = base_origins.copy()
-            
-            if origins_env:
-                # Parse and validate each additional origin from environment
-                for origin in origins_env.split(","):
-                    origin = origin.strip()
-                    if self._is_valid_origin(origin) and origin not in allowed_origins:
-                        allowed_origins.append(origin)
-                        logger.info(f"Added additional origin from environment: {origin}")
-                    elif origin in allowed_origins:
-                        logger.info(f"Origin already in base list (skipped): {origin}")
-                    else:
-                        logger.warning(f"Invalid origin rejected: {origin}")
-            
-            # Log final allowed origins for debugging
-            logger.info(f"Final production allowed origins: {allowed_origins}")
-            
-            return allowed_origins
+        # For debugging: also allow wildcard temporarily if in debug mode
+        # Note: Wildcard doesn't work with credentials, so this is just for testing
         
-        elif self.environment == "staging":
-            # Staging: allow staging domains plus base origins
-            allowed_origins = [
-                "https://staging.yourdomain.com",
-                "https://preview.yourdomain.com"
-            ] + base_origins
-            
-            if origins_env:
-                for origin in origins_env.split(","):
-                    origin = origin.strip()
-                    if self._is_valid_origin(origin) and self._is_staging_origin(origin) and origin not in allowed_origins:
-                        allowed_origins.append(origin)
-            
-            return allowed_origins
+        # TEMPORARY FIX: Always return Netlify origins regardless of environment
+        # This bypasses any environment detection issues
+        logger.info(f"Environment detected: {self.environment}")
+        logger.info(f"CORS_ORIGINS env var: {origins_env}")
         
-        else:
-            # Development: allow localhost and development origins plus base origins
-            dev_origins = [
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
-                "http://localhost:3001",
-                "http://127.0.0.1:3001"
-            ] + base_origins
-            
-            if origins_env:
-                for origin in origins_env.split(","):
-                    origin = origin.strip()
-                    if self._is_valid_origin(origin) and origin not in dev_origins:
-                        dev_origins.append(origin)
-            
-            return list(set(dev_origins))  # Remove duplicates
+        # Start with base origins and add any additional ones from environment
+        final_origins = base_origins.copy()
+        
+        if origins_env:
+            for origin in origins_env.split(","):
+                origin = origin.strip()
+                if self._is_valid_origin(origin) and origin not in final_origins:
+                    final_origins.append(origin)
+                    logger.info(f"Added additional origin from environment: {origin}")
+        
+        logger.info(f"Final allowed origins (all environments): {final_origins}")
+        return final_origins
     
     def get_allowed_methods(self) -> List[str]:
         """
