@@ -6,7 +6,7 @@ JWT_REFRESH_SECRET_KEY=w2nL8028iY1mRtT9ngpRrS2oXCScKSY3QzHlFcDxUns=
 ENCRYPTION_KEY=bCpWb7BNI8gOKCvhCMCvGJGLQjJN1KcBCZrPrXJeKY8=
 MASTER_ENCRYPTION_KEY=zcxi5EPfB4kM5n7Hkd0Mn9kfKIcoZPph1vQEB2Cutwc=
 CREDENTIAL_ENCRYPTION_KEY=vyFqRAZpB8pnBXdUc0kwFiCYnaJeY29ZxHfI9DEbYCo=
-CORS_ORIGINS=https://reveng.netlify.app
+CORS_ORIGINS=https://rev-eng.netlify.app,https://reveng.netlify.app
 ENVIRONMENT=production
 DEBUG=false
 ALLOWED_HOSTS=reverse-coach-backend.onrender.com,localhost,127.0.0.1,0.0.0.0

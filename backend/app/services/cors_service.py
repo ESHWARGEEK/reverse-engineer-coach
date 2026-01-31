@@ -44,8 +44,8 @@ class CORSService:
             # Add default production origins if none specified
             if not allowed_origins:
                 allowed_origins = [
-                    "https://yourdomain.com",
-                    "https://www.yourdomain.com"
+                    "https://rev-eng.netlify.app",
+                    "https://reveng.netlify.app"
                 ]
                 logger.warning("No valid origins found, using default production origins")
             
@@ -55,7 +55,9 @@ class CORSService:
             # Staging: allow staging domains
             staging_origins = [
                 "https://staging.yourdomain.com",
-                "https://preview.yourdomain.com"
+                "https://preview.yourdomain.com",
+                "https://rev-eng.netlify.app",
+                "https://reveng.netlify.app"
             ]
             
             if origins_env:
@@ -72,7 +74,9 @@ class CORSService:
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
                 "http://localhost:3001",
-                "http://127.0.0.1:3001"
+                "http://127.0.0.1:3001",
+                "https://rev-eng.netlify.app",
+                "https://reveng.netlify.app"
             ]
             
             if origins_env:
@@ -167,9 +171,13 @@ class CORSService:
             
             # Check scheme
             if self.environment == "production":
-                # Production: only HTTPS
+                # Production: only HTTPS, but be more permissive for netlify
                 if parsed.scheme != "https":
                     return False
+                
+                # Allow netlify domains specifically
+                if "netlify.app" in parsed.netloc:
+                    return True
             else:
                 # Development: allow HTTP for localhost
                 if parsed.scheme not in ["http", "https"]:
