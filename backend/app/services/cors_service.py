@@ -49,12 +49,15 @@ class CORSService:
                 ]
                 logger.info("No valid origins found, using default production origins")
             
-            # Always ensure our Netlify URL is included in production
+            # Always ensure our Netlify URLs are included in production
             netlify_urls = ["https://rev-eng.netlify.app", "https://reveng.netlify.app"]
             for netlify_url in netlify_urls:
                 if netlify_url not in allowed_origins:
                     allowed_origins.append(netlify_url)
-                    logger.info(f"Added Netlify URL to allowed origins: {netlify_url}")
+                    logger.info(f"Force-added Netlify URL to allowed origins: {netlify_url}")
+            
+            # Log final allowed origins for debugging
+            logger.info(f"Final production allowed origins: {allowed_origins}")
             
             return allowed_origins
         
