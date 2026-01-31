@@ -156,6 +156,7 @@ class CORSService:
         }
         
         logger.info(f"CORS configuration for {self.environment}: {len(config['allow_origins'])} origins allowed")
+        logger.info(f"Allowed origins: {config['allow_origins']}")
         
         return config
     
@@ -184,10 +185,12 @@ class CORSService:
                 
                 # Allow netlify domains specifically - be more permissive
                 if "netlify.app" in parsed.netloc:
+                    logger.info(f"Allowing Netlify domain: {parsed.netloc}")
                     return True
                     
                 # Allow our specific Netlify URLs
                 if parsed.netloc in ["rev-eng.netlify.app", "reveng.netlify.app"]:
+                    logger.info(f"Allowing specific Netlify URL: {parsed.netloc}")
                     return True
             else:
                 # Development: allow HTTP for localhost
@@ -199,10 +202,12 @@ class CORSService:
             
             # Check for suspicious patterns
             if any(char in origin for char in ["<", ">", "\"", "'", "javascript:", "data:"]):
+                logger.warning(f"Origin rejected due to suspicious patterns: {origin}")
                 return False
             
             # Check hostname length
             if len(parsed.netloc) > 253:  # RFC 1035 limit
+                logger.warning(f"Origin rejected due to hostname length: {origin}")
                 return False
             
             return True
