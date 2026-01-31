@@ -98,6 +98,36 @@ class LearningProject(Base):
     
     # Relationships
     user = relationship("User", back_populates="projects")
+
+
+class WorkflowExecution(Base):
+    __tablename__ = "workflow_executions"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    status = Column(String(50), nullable=False, default="pending")  # pending, running, completed, failed, cancelled
+    current_stage = Column(String(100), nullable=True)
+    progress_percentage = Column(Float, default=0.0)
+    
+    # Input and output data
+    input_data = Column(JSON, nullable=True)  # Workflow input parameters
+    result_data = Column(JSON, nullable=True)  # Final workflow results
+    error_details = Column(JSON, nullable=True)  # Error information if failed
+    
+    # Timing
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    estimated_completion = Column(DateTime(timezone=True), nullable=True)
+    
+    # Metadata
+    workflow_type = Column(String(100), default="enhanced_project_creation")
+    execution_metadata = Column(JSON, nullable=True)  # Additional execution metadata
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User")
     learning_specs = relationship("LearningSpec", back_populates="project", cascade="all, delete-orphan")
 
 
